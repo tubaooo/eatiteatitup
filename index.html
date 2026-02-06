@@ -38,6 +38,7 @@
 
     <div class="flex-1 p-5 overflow-y-auto pb-20">
         
+        <!-- 錯誤提示區塊 -->
         <div v-if="errorMessage" class="mb-4 bg-red-900/40 border border-red-800 text-red-200 p-3 rounded-xl text-xs flex gap-2 items-start">
             <span>⚠️</span>
             <span>{{ errorMessage }}</span>
@@ -167,7 +168,8 @@
                 comparisonNote: '',
                 displayTimeText: '',
                 isOpenNow: false,
-                totalCandidates: 0 
+                totalCandidates: 0,
+                safetyTimer: null // 新增安全計時器
             }
         },
         mounted() {
@@ -204,6 +206,15 @@
                 this.currentResult = null;
                 this.travelInfo = null;
 
+                // 啟動安全計時器，防止卡死
+                if (this.safetyTimer) clearTimeout(this.safetyTimer);
+                this.safetyTimer = setTimeout(() => {
+                    if (this.isLoading) {
+                        this.isLoading = false;
+                        this.errorMessage = "搜尋逾時，請檢查網路或稍後再試。";
+                    }
+                }, 15000); // 15秒後強制停止
+
                 this.geocoder.geocode({ address: this.searchLocation }, (results, status) => {
                     if (status === 'OK') {
                         const loc = results[0].geometry.location;
@@ -215,27 +226,23 @@
                 });
             },
             
-            // 核心修改：發動 5 個方向的並行掃描以取得最大店家池
             async radarScan(centerLoc) {
-                const radius = 1000; // 每點掃描 1 公里
-                const offset = 0.006; // 經緯度偏移量，大約 600-700 公尺
+                const radius = 1000; 
+                const offset = 0.006; 
                 
-                // 產生 5 個搜尋點 (中心, 東, 西, 南, 北)
+                // 減少為 3 個點以避免卡死 (中心, 偏移1, 偏移2)
                 const points = [
                     centerLoc,
-                    new google.maps.LatLng(centerLoc.lat() + offset, centerLoc.lng()),
-                    new google.maps.LatLng(centerLoc.lat() - offset, centerLoc.lng()),
-                    new google.maps.LatLng(centerLoc.lat(), centerLoc.lng() + offset),
-                    new google.maps.LatLng(centerLoc.lat(), centerLoc.lng() - offset)
+                    new google.maps.LatLng(centerLoc.lat() + offset, centerLoc.lng() + offset),
+                    new google.maps.LatLng(centerLoc.lat() - offset, centerLoc.lng() - offset)
                 ];
 
-                this.loadingStatus = '發動多點美食雷達掃描中...';
+                this.loadingStatus = '雷達掃描中...';
                 
                 try {
                     const allScanPromises = points.map(point => this.singlePointSearch(point, radius));
                     const allResultsArrays = await Promise.all(allScanPromises);
                     
-                    // 合併並去重 (根據 place_id)
                     let combined = [];
                     const seenIds = new Set();
                     
@@ -246,17 +253,18 @@
                         }
                     });
 
-                    this.loadingStatus = `成功偵測到 ${combined.length} 間店家，正在隨機洗牌...`;
+                    this.loadingStatus = `發現 ${combined.length} 間店家，篩選中...`;
                     this.processAllCandidates(combined, centerLoc);
                 } catch (e) {
-                    this.errorMessage = "掃描過程發生錯誤。";
+                    this.errorMessage = "搜尋發生錯誤，請重試。";
                     this.isLoading = false;
                 }
             },
 
             singlePointSearch(location, radius) {
                 return new Promise((resolve) => {
-                    const req = { location, radius, keyword: '美食 飯 麵 小吃' };
+                    // 簡化關鍵字以確保結果
+                    const req = { location, radius, keyword: '美食' };
                     this.service.nearbySearch(req, (results, status) => {
                         if (status === 'OK') resolve(results);
                         else resolve([]);
@@ -265,18 +273,17 @@
             },
 
             processAllCandidates(results, userLoc) {
-                // 大洗牌 (Fisher-Yates Shuffle)
+                // Fisher-Yates 洗牌
                 for (let i = results.length - 1; i > 0; i--) {
                     const j = Math.floor(Math.random() * (i + 1));
                     [results[i], results[j]] = [results[j], results[i]];
                 }
 
-                // 排除關鍵字
                 let candidates = results.filter(p => !this.excludeTags.some(tag => p.name.includes(tag)));
                 this.totalCandidates = candidates.length;
                 
                 if (candidates.length === 0) {
-                    this.errorMessage = "符合條件的店家為 0，請放寬排除條件。";
+                    this.errorMessage = "沒有符合條件的店家。";
                     this.isLoading = false;
                     return;
                 }
@@ -286,45 +293,48 @@
 
             tryFindValidPlace(candidates, userLoc) {
                 if (candidates.length === 0) {
-                    this.errorMessage = "目前這幾百間店似乎都休息中。";
+                    this.errorMessage = "目前掃描到的店家似乎都休息中。";
                     this.isLoading = false;
                     return;
                 }
 
-                const candidate = candidates.shift(); // 從大洗牌後的名單拿第一個
-                this.loadingStatus = `正在分析最佳選項：${candidate.name}`;
+                const candidate = candidates.shift();
+                this.loadingStatus = `分析：${candidate.name}`;
 
-                const request = {
-                    placeId: candidate.place_id,
-                    fields: ['name', 'rating', 'formatted_address', 'vicinity', 'photos', 'opening_hours', 'geometry', 'user_ratings_total', 'place_id']
-                };
+                // 增加一點延遲防止 API 速率過快
+                setTimeout(() => {
+                    const request = {
+                        placeId: candidate.place_id,
+                        fields: ['name', 'rating', 'formatted_address', 'vicinity', 'photos', 'opening_hours', 'geometry', 'user_ratings_total', 'place_id']
+                    };
 
-                this.service.getDetails(request, (place, status) => {
-                    if (status === 'OK') {
-                        const isOpen = place.opening_hours && typeof place.opening_hours.isOpen === 'function' && place.opening_hours.isOpen();
-                        
-                        if (this.onlyOpen && !isOpen) {
+                    this.service.getDetails(request, (place, status) => {
+                        if (status === 'OK') {
+                            const isOpen = place.opening_hours && typeof place.opening_hours.isOpen === 'function' && place.opening_hours.isOpen();
+                            
+                            if (this.onlyOpen && !isOpen) {
+                                this.tryFindValidPlace(candidates, userLoc);
+                                return;
+                            }
+
+                            this.currentResult = place;
+                            this.processOpeningHours(place);
+                            this.compareTravelOptions(userLoc, place.geometry.location);
+                            
+                            this.$nextTick(() => {
+                                const el = document.getElementById('result-section');
+                                if(el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                            });
+                            this.isLoading = false;
+                            this.loadingStatus = '';
+                            if (this.safetyTimer) clearTimeout(this.safetyTimer);
+                        } else {
                             this.tryFindValidPlace(candidates, userLoc);
-                            return;
                         }
-
-                        this.currentResult = place;
-                        this.processOpeningHours(place);
-                        this.compareTravelOptions(userLoc, place.geometry.location);
-                        
-                        this.$nextTick(() => {
-                            const el = document.getElementById('result-section');
-                            if(el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                        });
-                        this.isLoading = false;
-                        this.loadingStatus = '';
-                    } else {
-                        this.tryFindValidPlace(candidates, userLoc);
-                    }
-                });
+                    });
+                }, 100); // 100ms 緩衝
             },
 
-            // 格式與交通邏輯保持一致
             processOpeningHours(place) {
                 this.displayTimeText = '時間未知';
                 this.isOpenNow = false;
