@@ -40,6 +40,12 @@
         /* 營業中開關樣式 (淺色版) */
         .toggle-checkbox:checked { right: 0; border-color: #4b5563; }
         .toggle-checkbox:checked + .toggle-label { background-color: #4b5563; }
+
+        /* 文字描邊效果，增強可讀性 */
+        .text-stroke {
+            -webkit-text-stroke: 1px rgba(0, 0, 0, 0.6);
+            text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+        }
     </style>
 </head>
 <body>
@@ -66,7 +72,7 @@
                 <!-- 錯誤提示 -->
                 <div v-if="errorMessage" class="mb-6 bg-red-50 border-l-4 border-red-500 text-red-700 p-4 text-sm">
                     <div class="font-bold flex items-center gap-2">
-                        <span>⚠️</span> 錯誤訊息
+                        錯誤訊息
                     </div>
                     <p class="mt-1">{{ errorMessage }}</p>
                     <div v-if="debugInfo" class="mt-2 text-xs font-mono text-red-400 opacity-75">
@@ -78,7 +84,7 @@
                     <!-- 地點輸入 -->
                     <div>
                         <label class="block text-gray-500 text-xs font-bold uppercase mb-2 tracking-widest">
-                            📍 搜尋區域
+                            搜尋區域
                         </label>
                         <input v-model="searchLocation" type="text" class="w-full p-4 bg-white border border-gray-300 rounded-lg text-gray-800 outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent transition-all shadow-sm" placeholder="例如：板橋車站">
                     </div>
@@ -86,7 +92,7 @@
                     <!-- 排除條件 -->
                     <div>
                         <label class="block text-gray-500 text-xs font-bold uppercase mb-2 tracking-widest">
-                            🚫 排除條件
+                            排除條件
                         </label>
                         <div class="flex flex-wrap gap-2 mb-3">
                             <span v-for="(tag, index) in excludeTags" :key="index" @click="removeTag(index)" class="bg-white text-gray-600 px-3 py-1.5 rounded-full text-sm border border-gray-300 hover:border-red-300 hover:text-red-500 transition cursor-pointer flex items-center gap-2 shadow-sm">
@@ -103,7 +109,7 @@
                     <div class="pt-4">
                         <button @click="findLunch" :disabled="isLoading || !isMapsReady" class="w-full bg-gray-900 hover:bg-gray-800 text-white py-4 rounded-lg font-bold text-lg shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all transform active:scale-[0.98] flex justify-center items-center gap-3">
                             <div v-if="isLoading" class="loader border-white/20 border-t-white"></div>
-                            <span v-else>🎲 開始隨機抽選</span>
+                            <span v-else>開始隨機抽選</span>
                         </button>
                     </div>
                 </div>
@@ -145,10 +151,17 @@
                     </div>
                     
                     <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-6 pt-20">
-                        <h2 class="text-3xl md:text-4xl font-bold text-white mb-2 leading-tight serif-font drop-shadow-sm">{{ currentResult.name }}</h2>
-                        <div class="flex items-center gap-3 text-white/90 text-sm font-medium">
-                            <span class="bg-yellow-500 text-white px-2 py-0.5 rounded text-xs font-bold shadow-sm">⭐ {{ currentResult.rating || 'N/A' }}</span>
-                            <span v-if="currentResult.user_ratings_total">({{ currentResult.user_ratings_total }} 則評論)</span>
+                        <!-- 店名加上描邊效果 -->
+                        <h2 class="text-3xl md:text-4xl font-bold text-white mb-2 leading-tight serif-font drop-shadow-lg text-stroke">{{ currentResult.name }}</h2>
+                        
+                        <!-- 評分標籤：動態背景色 -->
+                        <div class="flex items-center gap-3 text-white text-sm font-medium">
+                            <span :class="getRatingColor(currentResult.rating)" class="text-white px-2 py-0.5 rounded text-xs font-bold shadow-sm flex items-center gap-1">
+                                ⭐ {{ currentResult.rating || 'N/A' }}
+                            </span>
+                            <span v-if="currentResult.user_ratings_total" class="text-white/90 drop-shadow-md">
+                                ({{ currentResult.user_ratings_total }} 則評論)
+                            </span>
                         </div>
                     </div>
                 </div>
@@ -261,6 +274,16 @@
             this.loadGoogleMaps();
         },
         methods: {
+            // 新增評分顏色判斷邏輯
+            getRatingColor(rating) {
+                if (!rating) return 'bg-gray-400';
+                const r = parseFloat(rating);
+                if (r >= 4.5) return 'bg-green-600'; // 綠色
+                if (r >= 4.0) return 'bg-orange-500'; // 橘色
+                if (r >= 3.5) return 'bg-orange-700'; // 橘紅色 (Tailwind orange-700 偏紅棕)
+                return 'bg-red-600'; // 紅色
+            },
+
             loadGoogleMaps() {
                 if (!YOUR_API_KEY || YOUR_API_KEY.includes('請將這串文字')) {
                     this.errorMessage = "請填入 API 金鑰。";
