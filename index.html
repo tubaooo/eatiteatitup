@@ -26,9 +26,6 @@
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: #0f172a; }
         ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
-        
-        .toggle-checkbox:checked { right: 0; border-color: #14b8a6; }
-        .toggle-checkbox:checked + .toggle-label { background-color: #14b8a6; }
     </style>
 </head>
 <body>
@@ -77,21 +74,13 @@
                 </div>
             </div>
 
-            <div class="flex items-center justify-between bg-slate-900/50 p-3 rounded-xl border border-slate-700/50">
-                <span class="text-slate-300 text-sm font-bold">只顯示目前營業中</span>
-                <div class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
-                    <input type="checkbox" name="toggle" id="toggle" v-model="onlyOpen" class="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer transition-all duration-300 ease-in-out" style="top: 2px; left: 2px;"/>
-                    <label for="toggle" class="toggle-label block overflow-hidden h-6 rounded-full bg-slate-700 cursor-pointer transition-colors duration-300"></label>
-                </div>
-            </div>
-
             <button @click="findLunch" :disabled="isLoading || !isMapsReady" class="w-full bg-teal-600 hover:bg-teal-500 active:scale-95 text-white py-3.5 rounded-xl font-bold text-lg shadow-lg disabled:opacity-50 disabled:scale-100 transition-all flex justify-center items-center gap-2">
                 <div v-if="isLoading" class="loader border-white border-t-transparent w-5 h-5 border-2"></div>
-                <span v-else>🎲 開始深度抽選</span>
+                <span v-else>🎲 開始隨機抽選</span>
             </button>
             
             <div v-if="isLoading" class="text-center text-xs text-teal-400 font-bold animate-pulse mt-2">
-                正在大範圍搜尋美食中，請稍候...
+                正在地毯式搜索美食中，會花一點時間...
             </div>
         </div>
 
@@ -207,7 +196,7 @@
                 searchLocation: '板橋車站',
                 newExcludeTag: '',
                 excludeTags: ['速食', '星巴克', '甜點', '麥當勞', '7-ELEVEN'],
-                onlyOpen: true,
+                // 移除了 onlyOpen 預設值
                 
                 currentResult: null,
                 isLoading: false,
@@ -279,14 +268,14 @@
                 this.travelInfo = null;
                 this.totalCandidates = 0;
 
-                // 安全計時器：30秒後強制停止 (因為我們現在搜得比較久)
+                // 延長安全計時器到 45 秒，因為我們要跑很多頁
                 if (this.safetyTimer) clearTimeout(this.safetyTimer);
                 this.safetyTimer = setTimeout(() => {
                     if (this.isLoading) {
                         this.isLoading = false;
                         this.errorMessage = "搜尋時間過長，可能是附近店家太多或網路問題，請重試。";
                     }
-                }, 30000); 
+                }, 45000); 
 
                 // 增加 componentRestrictions: { country: 'TW' } 鎖定台灣
                 this.geocoder.geocode({ 
@@ -304,18 +293,17 @@
                 });
             },
             
+            // 核心修改：隨機偏移 + 縮小半徑 + 強制翻頁
             async radarScan(centerLoc) {
-                const radius = 1000; 
-                const offset = 0.006; 
+                // 將半徑縮小到 700 公尺，避免跨到其他捷運站
+                const radius = 700; 
                 
-                // 5 個搜尋點 (中心 + 東南西北) 覆蓋更大範圍
-                const points = [
-                    centerLoc,
-                    new google.maps.LatLng(centerLoc.lat() + offset, centerLoc.lng() + offset),
-                    new google.maps.LatLng(centerLoc.lat() - offset, centerLoc.lng() - offset),
-                    new google.maps.LatLng(centerLoc.lat() + offset, centerLoc.lng() - offset),
-                    new google.maps.LatLng(centerLoc.lat() - offset, centerLoc.lng() + offset)
-                ];
+                // 產生 4 個搜尋點：1個中心 + 3個隨機偏移點
+                // 隨機偏移可以確保每次搜尋結果不同，解決「總是那 36 間」的問題
+                const points = [centerLoc];
+                for(let i=0; i<3; i++) {
+                    points.push(this.getRandomOffset(centerLoc, 300)); // 在 300 公尺內隨機偏移
+                }
 
                 try {
                     // 並行發送請求
@@ -348,27 +336,43 @@
                 }
             },
 
+            // 輔助函式：產生隨機經緯度偏移
+            getRandomOffset(location, meters) {
+                const r = meters / 111300; // 約略轉換公尺到度數
+                const y0 = location.lat();
+                const x0 = location.lng();
+                const u = Math.random();
+                const v = Math.random();
+                const w = r * Math.sqrt(u);
+                const t = 2 * Math.PI * v;
+                const x = w * Math.cos(t);
+                const y = w * Math.sin(t);
+                
+                // 修正經度的變形
+                const xAdjusted = x / Math.cos(y0);
+                
+                return new google.maps.LatLng(y + y0, xAdjusted + x0);
+            },
+
             singlePointSearch(location, radius) {
                 return new Promise((resolve) => {
                     const req = { location, radius, keyword: '美食' };
                     let allResults = [];
                     
-                    // 使用回呼函數處理分頁
+                    // 使用回呼函數處理分頁，強制抓取最多 3 頁
                     const callback = (results, status, pagination) => {
                         if (status === google.maps.places.PlacesServiceStatus.OK) {
                             allResults = allResults.concat(results);
                             
-                            // 為了真正的隨機性，如果有下一頁，延遲後繼續抓取
-                            // 限制最多抓 60 筆 (3頁) 以平衡等待時間
+                            // 強制翻頁，直到抓滿 60 筆或沒頁面為止
                             if (pagination && pagination.hasNextPage && allResults.length < 60) {
                                 setTimeout(() => {
                                     pagination.nextPage();
-                                }, 2000); // 必須有 2 秒間隔，否則 API 會報錯
+                                }, 2000); // 必須有 2 秒間隔
                             } else {
                                 resolve(allResults);
                             }
                         } else {
-                            // 如果沒結果或出錯，就把目前抓到的回傳
                             resolve(allResults);
                         }
                     };
@@ -398,13 +402,13 @@
 
             tryFindValidPlace(candidates, userLoc) {
                 if (candidates.length === 0) {
-                    this.errorMessage = "找不到營業中的餐廳。";
+                    this.errorMessage = "雖然找到很多店，但分析後發生錯誤，請重試。";
                     this.isLoading = false;
                     return;
                 }
-                const candidate = candidates.shift();
                 
-                // 不再顯示詳細分析過程，保持介面乾淨
+                // 因為已經隨機洗牌過，直接取第一個即可
+                const candidate = candidates.shift();
                 
                 // 延遲請求避免超速
                 setTimeout(() => {
@@ -415,19 +419,14 @@
 
                     this.service.getDetails(request, (place, status) => {
                         if (status === 'OK') {
-                            if (this.onlyOpen) {
-                                const isOpen = place.opening_hours && typeof place.opening_hours.isOpen === 'function' && place.opening_hours.isOpen();
-                                if (!isOpen) {
-                                    this.tryFindValidPlace(candidates, userLoc);
-                                    return;
-                                }
-                            }
+                            // 這裡不再檢查是否營業中，直接顯示
                             this.currentResult = place;
                             this.processOpeningHours(place);
                             this.compareTravelOptions(userLoc, place.geometry.location);
                             this.isLoading = false;
                             if (this.safetyTimer) clearTimeout(this.safetyTimer);
                         } else {
+                            // 如果這家店詳細資料抓不到，就試下一家
                             this.tryFindValidPlace(candidates, userLoc);
                         }
                     });
