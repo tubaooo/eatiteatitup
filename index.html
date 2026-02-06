@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>今天吃什麼？ | 隨機美食抽選</title>
+    <!-- 引入外部資源 -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
@@ -21,9 +22,11 @@
             animation: spin 1s linear infinite;
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: #0f172a; }
         ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+        
         .toggle-checkbox:checked { right: 0; border-color: #14b8a6; }
         .toggle-checkbox:checked + .toggle-label { background-color: #14b8a6; }
     </style>
@@ -39,13 +42,19 @@
     <div class="flex-1 p-5 overflow-y-auto pb-20">
         
         <!-- 錯誤提示區塊 -->
-        <div v-if="errorMessage" class="mb-4 bg-red-900/40 border border-red-800 text-red-200 p-3 rounded-xl text-xs flex gap-2 items-start">
-            <span>⚠️</span>
-            <span>{{ errorMessage }}</span>
+        <div v-if="errorMessage" class="mb-4 bg-red-900/40 border border-red-800 text-red-200 p-3 rounded-xl text-xs space-y-2">
+            <div class="flex gap-2 items-start font-bold">
+                <span>⚠️</span>
+                <span>{{ errorMessage }}</span>
+            </div>
+            <div v-if="debugInfo" class="pl-6 text-red-300 font-mono opacity-80 border-t border-red-800/50 pt-1 mt-1">
+                代碼: {{ debugInfo }}
+            </div>
         </div>
 
         <!-- 1. 搜尋設定區 -->
         <div class="bg-slate-800/50 p-5 rounded-2xl border border-slate-700/50 space-y-5 mb-6">
+            
             <div>
                 <label class="flex items-center gap-2 text-teal-200 text-xs font-bold uppercase mb-2 tracking-widest">
                     <span>📍</span> 搜尋區域
@@ -88,24 +97,37 @@
 
         <!-- 2. 結果顯示區 -->
         <div v-if="currentResult" id="result-section" class="animate-slide-up space-y-4 pb-10">
+            
             <div class="flex items-center gap-2 text-slate-400 text-xs font-bold uppercase tracking-wider px-2">
-                <span>👇 抽選結果 (雷達已掃描 {{ totalCandidates }} 間店家)</span>
+                <span>👇 抽選結果 (從 {{ totalCandidates }} 間店家中選出)</span>
                 <span class="flex-1 h-px bg-slate-700"></span>
             </div>
 
             <div class="bg-slate-800 rounded-3xl shadow-2xl border border-slate-700 overflow-hidden relative">
+                
                 <div class="h-64 bg-slate-700 relative group">
-                    <img v-if="currentResult.photos && currentResult.photos.length > 0" :src="currentResult.photos[0].getUrl({maxWidth: 600})" class="w-full h-full object-cover opacity-90 transition-opacity">
-                    <div v-else class="w-full h-full flex flex-col items-center justify-center text-slate-500 gap-2"><span class="text-3xl">🍽️</span><span class="text-xs">暫無照片</span></div>
+                    <img 
+                        v-if="currentResult.photos && currentResult.photos.length > 0"
+                        :src="currentResult.photos[0].getUrl({maxWidth: 600})" 
+                        class="w-full h-full object-cover opacity-90 transition-opacity"
+                        alt="餐廳照片"
+                    >
+                    <div v-else class="w-full h-full flex flex-col items-center justify-center text-slate-500 gap-2">
+                        <span class="text-3xl">🍽️</span>
+                        <span class="text-xs">暫無照片</span>
+                    </div>
+                    
                     <div class="absolute top-4 right-4 bg-black/70 backdrop-blur-md px-3 py-1.5 rounded-xl text-sm font-bold text-yellow-400 border border-white/10 shadow-lg flex items-center gap-1.5">
                         <span>⭐</span> {{ currentResult.rating || 'N/A' }}
                     </div>
                 </div>
 
                 <div class="p-6">
-                    <h2 class="text-2xl font-bold text-white mb-2 leading-tight">{{ currentResult.name }}</h2>
+                    <h2 class="text-2xl font-bold text-white leading-tight mb-2">{{ currentResult.name }}</h2>
+                    
                     <div class="flex flex-wrap gap-2 mb-4 items-center">
-                        <div :class="isOpenNow ? 'bg-teal-900/60 text-teal-300 border-teal-700/50' : 'bg-red-900/60 text-red-300 border-red-700/50'" class="border text-sm px-3 py-1.5 rounded-lg font-bold flex items-center gap-2 shadow-sm">
+                        <div :class="isOpenNow ? 'bg-teal-900/60 text-teal-300 border-teal-700/50' : 'bg-red-900/60 text-red-300 border-red-700/50'" 
+                             class="border text-sm px-3 py-1.5 rounded-lg font-bold flex items-center gap-2 shadow-sm">
                             <span v-if="isOpenNow" class="w-2 h-2 rounded-full bg-teal-400 animate-pulse"></span>
                             {{ displayTimeText }}
                         </div>
@@ -114,29 +136,54 @@
                         </span>
                     </div>
 
-                    <p class="text-slate-400 text-sm mb-6 flex items-start gap-2 leading-relaxed">📍 {{ currentResult.vicinity || currentResult.formatted_address }}</p>
+                    <p class="text-slate-400 text-sm mb-6 flex items-start gap-2 leading-relaxed">
+                        <span class="mt-0.5">📍</span> {{ currentResult.vicinity || currentResult.formatted_address }}
+                    </p>
 
                     <div class="bg-slate-900/80 rounded-2xl p-4 border border-slate-700/50 mb-6 relative overflow-hidden">
+                        
                         <div class="flex items-center gap-2 mb-3 text-xs text-slate-500 border-b border-slate-700/50 pb-2">
                             <span class="bg-slate-700 text-slate-300 px-1.5 py-0.5 rounded text-[10px] font-bold">FROM</span>
                             <span class="truncate max-w-[150px] font-medium text-slate-300">{{ searchLocation }}</span>
                         </div>
+
                         <div class="flex justify-between items-center mb-1 relative z-10">
-                            <p class="text-xs font-bold uppercase tracking-wider flex items-center gap-1" :class="finalTravelMode === 'TRANSIT' ? 'text-blue-400' : 'text-teal-500'">
-                                <span v-if="finalTravelMode === 'TRANSIT'">🚌 建議搭乘</span><span v-else>🚶 建議步行</span>
+                            <p class="text-xs font-bold uppercase tracking-wider flex items-center gap-1" 
+                               :class="finalTravelMode === 'TRANSIT' ? 'text-blue-400' : 'text-teal-500'">
+                                <span v-if="finalTravelMode === 'TRANSIT'">🚌 建議搭乘</span>
+                                <span v-else>🚶 建議步行</span>
                             </p>
-                            <span v-if="finalTravelMode === 'TRANSIT' && transitLine" class="text-xs bg-blue-900/50 text-blue-200 px-2 py-0.5 rounded border border-blue-800/50">{{ transitLine }}</span>
+                            <span v-if="finalTravelMode === 'TRANSIT' && transitLine" class="text-xs bg-blue-900/50 text-blue-200 px-2 py-0.5 rounded border border-blue-800/50">
+                                {{ transitLine }}
+                            </span>
                         </div>
-                        <div v-if="isCalculatingTime" class="flex items-center gap-2 text-slate-400 text-sm py-2"><div class="loader w-4 h-4 border-2"></div> 分析路徑...</div>
+                        
+                        <div v-if="isCalculatingTime" class="flex items-center gap-2 text-slate-400 text-sm py-2">
+                            <div class="loader w-4 h-4 border-2"></div> 分析最佳路徑...
+                        </div>
+                        
                         <div v-else-if="travelInfo" class="relative z-10">
-                            <div class="flex items-baseline gap-2"><span class="text-4xl font-bold" :class="finalTravelMode === 'TRANSIT' ? 'text-blue-400' : 'text-teal-400'">{{ travelInfo.duration.text }}</span><span class="text-sm text-slate-500 font-medium">{{ travelInfo.distance.text }}</span></div>
-                            <p v-if="comparisonNote" class="text-xs text-slate-500 mt-1 italic">* {{ comparisonNote }}</p>
+                            <div class="flex items-baseline gap-2">
+                                <span class="text-4xl font-bold" :class="finalTravelMode === 'TRANSIT' ? 'text-blue-400' : 'text-teal-400'">
+                                    {{ travelInfo.duration.text }}
+                                </span>
+                                <span class="text-sm text-slate-500 font-medium">{{ travelInfo.distance.text }}</span>
+                            </div>
+                            <p v-if="comparisonNote" class="text-xs text-slate-500 mt-1 italic">
+                                * {{ comparisonNote }}
+                            </p>
                         </div>
+                        
+                        <div v-else class="text-sm text-slate-500 italic py-2">距離太近或無法計算</div>
                     </div>
 
                     <div class="grid grid-cols-2 gap-3">
-                        <a :href="'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(currentResult.name) + '&query_place_id=' + currentResult.place_id" target="_blank" class="bg-teal-600 hover:bg-teal-500 active:scale-95 text-white py-4 rounded-xl text-center font-bold text-sm transition-all shadow-lg shadow-teal-900/20">導覽地圖</a>
-                        <button @click="reset" class="border border-slate-600 text-slate-300 hover:bg-slate-800 active:scale-95 py-4 rounded-xl font-bold text-sm transition-all">清除</button>
+                        <a :href="'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(currentResult.name) + '&query_place_id=' + currentResult.place_id" target="_blank" class="bg-teal-600 hover:bg-teal-500 active:scale-95 text-white py-4 rounded-xl text-center font-bold text-sm transition-all shadow-lg shadow-teal-900/20">
+                            開啟地圖導航
+                        </a>
+                        <button @click="reset" class="border border-slate-600 text-slate-300 hover:bg-slate-800 active:scale-95 py-4 rounded-xl font-bold text-sm transition-all">
+                            清除結果
+                        </button>
                     </div>
                 </div>
             </div>
@@ -146,7 +193,11 @@
 </div>
 
 <script>
+    // ==========================================
+    // ▼ 已經幫你把金鑰填好了 ▼
+    // ==========================================
     const YOUR_API_KEY = 'AIzaSyC0LqN7gsdMS1fI8brrHDelMW7KzddInJM'; 
+    // ==========================================
 
     const { createApp } = Vue;
     createApp({
@@ -157,19 +208,23 @@
                 newExcludeTag: '',
                 excludeTags: ['速食', '星巴克', '甜點', '麥當勞', '7-ELEVEN'],
                 onlyOpen: true,
+                
                 currentResult: null,
                 isLoading: false,
-                loadingStatus: '',
+                loadingStatus: '', 
                 isCalculatingTime: false,
                 errorMessage: '',
-                travelInfo: null,
-                finalTravelMode: 'WALKING',
-                transitLine: '',
-                comparisonNote: '',
-                displayTimeText: '',
+                debugInfo: '', 
+                
+                travelInfo: null, 
+                finalTravelMode: 'WALKING', 
+                transitLine: '', 
+                comparisonNote: '', 
+                
+                displayTimeText: '', 
                 isOpenNow: false,
                 totalCandidates: 0,
-                safetyTimer: null // 新增安全計時器
+                safetyTimer: null 
             }
         },
         mounted() {
@@ -189,13 +244,19 @@
                         this.errorMessage = "地圖初始化錯誤: " + e.message;
                     }
                 };
+
                 const script = document.createElement('script');
                 script.src = `https://maps.googleapis.com/maps/api/js?key=${YOUR_API_KEY}&libraries=places&language=zh-TW&callback=initMapCallback`;
                 script.async = true;
-                script.onerror = () => { this.errorMessage = "金鑰錯誤或網路連線失敗。"; };
+                script.onerror = () => { this.errorMessage = "無法連線至 Google 伺服器，請檢查網路或 API 權限。"; };
                 document.head.appendChild(script);
             },
-            addTag() { if (this.newExcludeTag.trim()) { this.excludeTags.push(this.newExcludeTag.trim()); this.newExcludeTag = ''; } },
+            addTag() {
+                if (this.newExcludeTag.trim()) {
+                    this.excludeTags.push(this.newExcludeTag.trim());
+                    this.newExcludeTag = '';
+                }
+            },
             removeTag(idx) { this.excludeTags.splice(idx, 1); },
             
             findLunch() {
@@ -203,17 +264,19 @@
                 this.isLoading = true;
                 this.loadingStatus = '雷達座標鎖定中...';
                 this.errorMessage = '';
+                this.debugInfo = '';
                 this.currentResult = null;
                 this.travelInfo = null;
+                this.totalCandidates = 0;
 
-                // 啟動安全計時器，防止卡死
+                // 安全計時器：15秒後強制停止
                 if (this.safetyTimer) clearTimeout(this.safetyTimer);
                 this.safetyTimer = setTimeout(() => {
                     if (this.isLoading) {
                         this.isLoading = false;
-                        this.errorMessage = "搜尋逾時，請檢查網路或稍後再試。";
+                        this.errorMessage = "搜尋逾時，可能是搜尋量過大被 Google 限流，請稍後再試。";
                     }
-                }, 15000); // 15秒後強制停止
+                }, 15000); 
 
                 this.geocoder.geocode({ address: this.searchLocation }, (results, status) => {
                     if (status === 'OK') {
@@ -221,7 +284,8 @@
                         this.radarScan(loc); 
                     } else {
                         this.isLoading = false;
-                        this.errorMessage = "找不到這個地點。";
+                        this.errorMessage = "找不到這個地點，請輸入更具體的地址或地標。";
+                        this.debugInfo = status;
                     }
                 });
             },
@@ -230,7 +294,8 @@
                 const radius = 1000; 
                 const offset = 0.006; 
                 
-                // 減少為 3 個點以避免卡死 (中心, 偏移1, 偏移2)
+                // 減少併發請求為 3 個點 (中心, 東北, 西南)
+                // 這樣既能擴大範圍，又比較不會卡住
                 const points = [
                     centerLoc,
                     new google.maps.LatLng(centerLoc.lat() + offset, centerLoc.lng() + offset),
@@ -240,40 +305,59 @@
                 this.loadingStatus = '雷達掃描中...';
                 
                 try {
+                    // 並行發送請求
                     const allScanPromises = points.map(point => this.singlePointSearch(point, radius));
-                    const allResultsArrays = await Promise.all(allScanPromises);
+                    const outcomes = await Promise.all(allScanPromises);
                     
                     let combined = [];
                     const seenIds = new Set();
+                    let lastError = null;
                     
-                    allResultsArrays.flat().forEach(place => {
-                        if (place && place.place_id && !seenIds.has(place.place_id)) {
-                            seenIds.add(place.place_id);
-                            combined.push(place);
+                    outcomes.forEach(o => {
+                        if (o.status === 'OK') {
+                            o.results.forEach(place => {
+                                if (place && place.place_id && !seenIds.has(place.place_id)) {
+                                    seenIds.add(place.place_id);
+                                    combined.push(place);
+                                }
+                            });
+                        } else if (o.status !== 'ZERO_RESULTS') {
+                            lastError = o.status;
                         }
                     });
+
+                    // 如果完全沒結果，檢查是否因為錯誤
+                    if (combined.length === 0) {
+                        if (lastError) {
+                            this.errorMessage = "搜尋發生錯誤 (Google 拒絕請求)";
+                            this.debugInfo = lastError;
+                        } else {
+                            this.errorMessage = "附近完全找不到符合條件的美食。";
+                        }
+                        this.isLoading = false;
+                        return;
+                    }
 
                     this.loadingStatus = `發現 ${combined.length} 間店家，篩選中...`;
                     this.processAllCandidates(combined, centerLoc);
                 } catch (e) {
-                    this.errorMessage = "搜尋發生錯誤，請重試。";
+                    this.errorMessage = "搜尋發生未預期的錯誤。";
+                    this.debugInfo = e.message;
                     this.isLoading = false;
                 }
             },
 
             singlePointSearch(location, radius) {
                 return new Promise((resolve) => {
-                    // 簡化關鍵字以確保結果
                     const req = { location, radius, keyword: '美食' };
                     this.service.nearbySearch(req, (results, status) => {
-                        if (status === 'OK') resolve(results);
-                        else resolve([]);
+                        resolve({ status, results: results || [] });
                     });
                 });
             },
 
             processAllCandidates(results, userLoc) {
-                // Fisher-Yates 洗牌
+                // Fisher-Yates 大洗牌
                 for (let i = results.length - 1; i > 0; i--) {
                     const j = Math.floor(Math.random() * (i + 1));
                     [results[i], results[j]] = [results[j], results[i]];
@@ -283,7 +367,7 @@
                 this.totalCandidates = candidates.length;
                 
                 if (candidates.length === 0) {
-                    this.errorMessage = "沒有符合條件的店家。";
+                    this.errorMessage = "所有店家都被排除條件過濾掉了。";
                     this.isLoading = false;
                     return;
                 }
@@ -301,7 +385,7 @@
                 const candidate = candidates.shift();
                 this.loadingStatus = `分析：${candidate.name}`;
 
-                // 增加一點延遲防止 API 速率過快
+                // 增加一點點延遲，避免連續請求太快被擋
                 setTimeout(() => {
                     const request = {
                         placeId: candidate.place_id,
@@ -310,11 +394,12 @@
 
                     this.service.getDetails(request, (place, status) => {
                         if (status === 'OK') {
-                            const isOpen = place.opening_hours && typeof place.opening_hours.isOpen === 'function' && place.opening_hours.isOpen();
-                            
-                            if (this.onlyOpen && !isOpen) {
-                                this.tryFindValidPlace(candidates, userLoc);
-                                return;
+                            if (this.onlyOpen) {
+                                const isOpen = place.opening_hours && typeof place.opening_hours.isOpen === 'function' && place.opening_hours.isOpen();
+                                if (!isOpen) {
+                                    this.tryFindValidPlace(candidates, userLoc);
+                                    return;
+                                }
                             }
 
                             this.currentResult = place;
@@ -329,10 +414,11 @@
                             this.loadingStatus = '';
                             if (this.safetyTimer) clearTimeout(this.safetyTimer);
                         } else {
+                            // 詳情失敗，試下一間
                             this.tryFindValidPlace(candidates, userLoc);
                         }
                     });
-                }, 100); // 100ms 緩衝
+                }, 150); 
             },
 
             processOpeningHours(place) {
@@ -362,6 +448,10 @@
                          this.displayTimeText = this.isOpenNow ? `${currentDayName} 營業中` : `${currentDayName} 休息中`;
                     }
                 } else { this.displayTimeText = `${currentDayName} 休息中`; }
+                
+                if (this.displayTimeText === '時間未知') {
+                    this.displayTimeText = `${currentDayName} 休息中`;
+                }
             },
 
             compareTravelOptions(origin, dest) {
@@ -420,4 +510,3 @@
 </script>
 </body>
 </html>
-
