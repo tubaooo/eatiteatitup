@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>今天吃什麼？ | 隨機美食抽選</title>
-    <!-- 引入外部資源 -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
@@ -22,11 +21,9 @@
             animation: spin 1s linear infinite;
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: #0f172a; }
         ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
-        
         .toggle-checkbox:checked { right: 0; border-color: #14b8a6; }
         .toggle-checkbox:checked + .toggle-label { background-color: #14b8a6; }
     </style>
@@ -41,23 +38,13 @@
 
     <div class="flex-1 p-5 overflow-y-auto pb-20">
         
-        <!-- 系統錯誤與網域提示 -->
-        <div v-if="errorMessage" class="mb-4 bg-red-900/40 border border-red-800 text-red-200 p-4 rounded-xl text-xs space-y-2">
-            <div class="flex gap-2 items-start">
-                <span>⚠️</span>
-                <span>{{ errorMessage }}</span>
-            </div>
-            <div class="mt-2 p-2 bg-black/30 rounded border border-red-700/50">
-                <p class="font-bold text-red-300 mb-1">🔍 除錯資訊：</p>
-                <p>你目前的執行網域為：</p>
-                <code class="block mt-1 p-1 bg-slate-800 rounded select-all text-teal-400">{{ currentOrigin }}</code>
-                <p class="mt-2">請將此網址加入 Google Cloud Console 的「網站限制」清單中。</p>
-            </div>
+        <div v-if="errorMessage" class="mb-4 bg-red-900/40 border border-red-800 text-red-200 p-3 rounded-xl text-xs flex gap-2 items-start">
+            <span>⚠️</span>
+            <span>{{ errorMessage }}</span>
         </div>
 
         <!-- 1. 搜尋設定區 -->
         <div class="bg-slate-800/50 p-5 rounded-2xl border border-slate-700/50 space-y-5 mb-6">
-            
             <div>
                 <label class="flex items-center gap-2 text-teal-200 text-xs font-bold uppercase mb-2 tracking-widest">
                     <span>📍</span> 搜尋區域
@@ -90,7 +77,7 @@
 
             <button @click="findLunch" :disabled="isLoading || !isMapsReady" class="w-full bg-teal-600 hover:bg-teal-500 active:scale-95 text-white py-3.5 rounded-xl font-bold text-lg shadow-lg disabled:opacity-50 disabled:scale-100 transition-all flex justify-center items-center gap-2">
                 <div v-if="isLoading" class="loader border-white border-t-transparent w-5 h-5 border-2"></div>
-                <span v-else>🎲 開始隨機抽選</span>
+                <span v-else>🎲 開始深層掃描抽選</span>
             </button>
             
             <div v-if="isLoading" class="text-center text-xs text-teal-400 font-bold animate-pulse">
@@ -100,37 +87,24 @@
 
         <!-- 2. 結果顯示區 -->
         <div v-if="currentResult" id="result-section" class="animate-slide-up space-y-4 pb-10">
-            
             <div class="flex items-center gap-2 text-slate-400 text-xs font-bold uppercase tracking-wider px-2">
-                <span>👇 抽選結果 (從 {{ totalCandidates }} 間店家中選出)</span>
+                <span>👇 抽選結果 (雷達已掃描 {{ totalCandidates }} 間店家)</span>
                 <span class="flex-1 h-px bg-slate-700"></span>
             </div>
 
             <div class="bg-slate-800 rounded-3xl shadow-2xl border border-slate-700 overflow-hidden relative">
-                
                 <div class="h-64 bg-slate-700 relative group">
-                    <img 
-                        v-if="currentResult.photos && currentResult.photos.length > 0"
-                        :src="currentResult.photos[0].getUrl({maxWidth: 600})" 
-                        class="w-full h-full object-cover opacity-90 transition-opacity"
-                        alt="餐廳照片"
-                    >
-                    <div v-else class="w-full h-full flex flex-col items-center justify-center text-slate-500 gap-2">
-                        <span class="text-3xl">🍽️</span>
-                        <span class="text-xs">暫無照片</span>
-                    </div>
-                    
+                    <img v-if="currentResult.photos && currentResult.photos.length > 0" :src="currentResult.photos[0].getUrl({maxWidth: 600})" class="w-full h-full object-cover opacity-90 transition-opacity">
+                    <div v-else class="w-full h-full flex flex-col items-center justify-center text-slate-500 gap-2"><span class="text-3xl">🍽️</span><span class="text-xs">暫無照片</span></div>
                     <div class="absolute top-4 right-4 bg-black/70 backdrop-blur-md px-3 py-1.5 rounded-xl text-sm font-bold text-yellow-400 border border-white/10 shadow-lg flex items-center gap-1.5">
                         <span>⭐</span> {{ currentResult.rating || 'N/A' }}
                     </div>
                 </div>
 
                 <div class="p-6">
-                    <h2 class="text-2xl font-bold text-white leading-tight mb-2">{{ currentResult.name }}</h2>
-                    
+                    <h2 class="text-2xl font-bold text-white mb-2 leading-tight">{{ currentResult.name }}</h2>
                     <div class="flex flex-wrap gap-2 mb-4 items-center">
-                        <div :class="isOpenNow ? 'bg-teal-900/60 text-teal-300 border-teal-700/50' : 'bg-red-900/60 text-red-300 border-red-700/50'" 
-                             class="border text-sm px-3 py-1.5 rounded-lg font-bold flex items-center gap-2 shadow-sm">
+                        <div :class="isOpenNow ? 'bg-teal-900/60 text-teal-300 border-teal-700/50' : 'bg-red-900/60 text-red-300 border-red-700/50'" class="border text-sm px-3 py-1.5 rounded-lg font-bold flex items-center gap-2 shadow-sm">
                             <span v-if="isOpenNow" class="w-2 h-2 rounded-full bg-teal-400 animate-pulse"></span>
                             {{ displayTimeText }}
                         </div>
@@ -139,54 +113,29 @@
                         </span>
                     </div>
 
-                    <p class="text-slate-400 text-sm mb-6 flex items-start gap-2 leading-relaxed">
-                        <span class="mt-0.5">📍</span> {{ currentResult.vicinity || currentResult.formatted_address }}
-                    </p>
+                    <p class="text-slate-400 text-sm mb-6 flex items-start gap-2 leading-relaxed">📍 {{ currentResult.vicinity || currentResult.formatted_address }}</p>
 
                     <div class="bg-slate-900/80 rounded-2xl p-4 border border-slate-700/50 mb-6 relative overflow-hidden">
-                        
                         <div class="flex items-center gap-2 mb-3 text-xs text-slate-500 border-b border-slate-700/50 pb-2">
                             <span class="bg-slate-700 text-slate-300 px-1.5 py-0.5 rounded text-[10px] font-bold">FROM</span>
                             <span class="truncate max-w-[150px] font-medium text-slate-300">{{ searchLocation }}</span>
                         </div>
-
                         <div class="flex justify-between items-center mb-1 relative z-10">
-                            <p class="text-xs font-bold uppercase tracking-wider flex items-center gap-1" 
-                               :class="finalTravelMode === 'TRANSIT' ? 'text-blue-400' : 'text-teal-500'">
-                                <span v-if="finalTravelMode === 'TRANSIT'">🚌 建議搭乘</span>
-                                <span v-else>🚶 建議步行</span>
+                            <p class="text-xs font-bold uppercase tracking-wider flex items-center gap-1" :class="finalTravelMode === 'TRANSIT' ? 'text-blue-400' : 'text-teal-500'">
+                                <span v-if="finalTravelMode === 'TRANSIT'">🚌 建議搭乘</span><span v-else>🚶 建議步行</span>
                             </p>
-                            <span v-if="finalTravelMode === 'TRANSIT' && transitLine" class="text-xs bg-blue-900/50 text-blue-200 px-2 py-0.5 rounded border border-blue-800/50">
-                                {{ transitLine }}
-                            </span>
+                            <span v-if="finalTravelMode === 'TRANSIT' && transitLine" class="text-xs bg-blue-900/50 text-blue-200 px-2 py-0.5 rounded border border-blue-800/50">{{ transitLine }}</span>
                         </div>
-                        
-                        <div v-if="isCalculatingTime" class="flex items-center gap-2 text-slate-400 text-sm py-2">
-                            <div class="loader w-4 h-4 border-2"></div> 分析最佳路徑...
-                        </div>
-                        
+                        <div v-if="isCalculatingTime" class="flex items-center gap-2 text-slate-400 text-sm py-2"><div class="loader w-4 h-4 border-2"></div> 分析路徑...</div>
                         <div v-else-if="travelInfo" class="relative z-10">
-                            <div class="flex items-baseline gap-2">
-                                <span class="text-4xl font-bold" :class="finalTravelMode === 'TRANSIT' ? 'text-blue-400' : 'text-teal-400'">
-                                    {{ travelInfo.duration.text }}
-                                </span>
-                                <span class="text-sm text-slate-500 font-medium">{{ travelInfo.distance.text }}</span>
-                            </div>
-                            <p v-if="comparisonNote" class="text-xs text-slate-500 mt-1 italic">
-                                * {{ comparisonNote }}
-                            </p>
+                            <div class="flex items-baseline gap-2"><span class="text-4xl font-bold" :class="finalTravelMode === 'TRANSIT' ? 'text-blue-400' : 'text-teal-400'">{{ travelInfo.duration.text }}</span><span class="text-sm text-slate-500 font-medium">{{ travelInfo.distance.text }}</span></div>
+                            <p v-if="comparisonNote" class="text-xs text-slate-500 mt-1 italic">* {{ comparisonNote }}</p>
                         </div>
-                        
-                        <div v-else class="text-sm text-slate-500 italic py-2">距離太近或無法計算</div>
                     </div>
 
                     <div class="grid grid-cols-2 gap-3">
-                        <a :href="'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(currentResult.name) + '&query_place_id=' + currentResult.place_id" target="_blank" class="bg-teal-600 hover:bg-teal-500 active:scale-95 text-white py-4 rounded-xl text-center font-bold text-sm transition-all shadow-lg shadow-teal-900/20">
-                            開啟地圖導航
-                        </a>
-                        <button @click="reset" class="border border-slate-600 text-slate-300 hover:bg-slate-800 active:scale-95 py-4 rounded-xl font-bold text-sm transition-all">
-                            清除結果
-                        </button>
+                        <a :href="'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(currentResult.name) + '&query_place_id=' + currentResult.place_id" target="_blank" class="bg-teal-600 hover:bg-teal-500 active:scale-95 text-white py-4 rounded-xl text-center font-bold text-sm transition-all shadow-lg shadow-teal-900/20">導覽地圖</a>
+                        <button @click="reset" class="border border-slate-600 text-slate-300 hover:bg-slate-800 active:scale-95 py-4 rounded-xl font-bold text-sm transition-all">清除</button>
                     </div>
                 </div>
             </div>
@@ -196,11 +145,7 @@
 </div>
 
 <script>
-    // ==========================================
-    // ▼ 請在下方引號中填入你的 Google Maps API Key ▼
-    // ==========================================
-    const YOUR_API_KEY = 'AIzaSyC0LqN7gsdMS1fI8brrHDelMW7KzddInJM'; 
-    // ==========================================
+    const YOUR_API_KEY = '請填入你的API金鑰'; 
 
     const { createApp } = Vue;
     createApp({
@@ -211,34 +156,25 @@
                 newExcludeTag: '',
                 excludeTags: ['速食', '星巴克', '甜點', '麥當勞', '7-ELEVEN'],
                 onlyOpen: true,
-                
                 currentResult: null,
                 isLoading: false,
-                loadingStatus: '', 
+                loadingStatus: '',
                 isCalculatingTime: false,
                 errorMessage: '',
-                currentOrigin: window.location.origin, // 顯示目前的網域
-                
-                travelInfo: null, 
-                finalTravelMode: 'WALKING', 
-                transitLine: '', 
-                comparisonNote: '', 
-                
-                displayTimeText: '', 
+                travelInfo: null,
+                finalTravelMode: 'WALKING',
+                transitLine: '',
+                comparisonNote: '',
+                displayTimeText: '',
                 isOpenNow: false,
                 totalCandidates: 0 
             }
         },
         mounted() {
-            this.loadGoogleMaps();
+            this.initGoogleMaps();
         },
         methods: {
-            loadGoogleMaps() {
-                if (!YOUR_API_KEY || YOUR_API_KEY.includes('請將這串文字')) {
-                    this.errorMessage = "請填入 API 金鑰。";
-                    return;
-                }
-                
+            initGoogleMaps() {
                 window.initMapCallback = () => {
                     try {
                         const dummyDiv = document.createElement('div');
@@ -251,32 +187,19 @@
                         this.errorMessage = "地圖初始化錯誤: " + e.message;
                     }
                 };
-
-                // 監聽 Google Maps 的全域錯誤
-                window.gm_authFailure = () => {
-                    this.errorMessage = "Google Maps API 身分驗證失敗！可能是「網站限制」擋住了。";
-                };
-
                 const script = document.createElement('script');
                 script.src = `https://maps.googleapis.com/maps/api/js?key=${YOUR_API_KEY}&libraries=places&language=zh-TW&callback=initMapCallback`;
                 script.async = true;
-                script.onerror = () => { 
-                    this.errorMessage = "無法載入 Google Maps，請檢查網路或金鑰權限。"; 
-                };
+                script.onerror = () => { this.errorMessage = "金鑰錯誤或網路連線失敗。"; };
                 document.head.appendChild(script);
             },
-            addTag() {
-                if (this.newExcludeTag.trim()) {
-                    this.excludeTags.push(this.newExcludeTag.trim());
-                    this.newExcludeTag = '';
-                }
-            },
+            addTag() { if (this.newExcludeTag.trim()) { this.excludeTags.push(this.newExcludeTag.trim()); this.newExcludeTag = ''; } },
             removeTag(idx) { this.excludeTags.splice(idx, 1); },
             
             findLunch() {
                 if (!this.isMapsReady) return;
                 this.isLoading = true;
-                this.loadingStatus = '定位中...';
+                this.loadingStatus = '雷達座標鎖定中...';
                 this.errorMessage = '';
                 this.currentResult = null;
                 this.travelInfo = null;
@@ -284,65 +207,93 @@
                 this.geocoder.geocode({ address: this.searchLocation }, (results, status) => {
                     if (status === 'OK') {
                         const loc = results[0].geometry.location;
-                        this.fetchAllPlaces(loc); 
+                        this.radarScan(loc); 
                     } else {
                         this.isLoading = false;
-                        this.errorMessage = "找不到這個地點：" + status;
+                        this.errorMessage = "找不到這個地點。";
                     }
                 });
             },
             
-            fetchAllPlaces(location) {
-                const req = { 
-                    location, 
-                    radius: 2000, 
-                    keyword: '美食'
-                };
+            // 核心修改：發動 5 個方向的並行掃描以取得最大店家池
+            async radarScan(centerLoc) {
+                const radius = 1000; // 每點掃描 1 公里
+                const offset = 0.006; // 經緯度偏移量，大約 600-700 公尺
+                
+                // 產生 5 個搜尋點 (中心, 東, 西, 南, 北)
+                const points = [
+                    centerLoc,
+                    new google.maps.LatLng(centerLoc.lat() + offset, centerLoc.lng()),
+                    new google.maps.LatLng(centerLoc.lat() - offset, centerLoc.lng()),
+                    new google.maps.LatLng(centerLoc.lat(), centerLoc.lng() + offset),
+                    new google.maps.LatLng(centerLoc.lat(), centerLoc.lng() - offset)
+                ];
 
-                let allResults = [];
-                this.service.nearbySearch(req, (results, status, pagination) => {
-                    if (status === 'OK') {
-                        allResults = allResults.concat(results);
-                        if (pagination && pagination.hasNextPage && allResults.length < 60) {
-                            this.loadingStatus = '挖掘更多美食中...';
-                            setTimeout(() => pagination.nextPage(), 2000); 
-                        } else {
-                            this.processAllCandidates(allResults, location);
+                this.loadingStatus = '發動多點美食雷達掃描中...';
+                
+                try {
+                    const allScanPromises = points.map(point => this.singlePointSearch(point, radius));
+                    const allResultsArrays = await Promise.all(allScanPromises);
+                    
+                    // 合併並去重 (根據 place_id)
+                    let combined = [];
+                    const seenIds = new Set();
+                    
+                    allResultsArrays.flat().forEach(place => {
+                        if (place && place.place_id && !seenIds.has(place.place_id)) {
+                            seenIds.add(place.place_id);
+                            combined.push(place);
                         }
-                    } else {
-                        if (allResults.length > 0) this.processAllCandidates(allResults, location);
-                        else {
-                            this.errorMessage = "搜尋失敗：" + status;
-                            this.isLoading = false;
-                        }
-                    }
+                    });
+
+                    this.loadingStatus = `成功偵測到 ${combined.length} 間店家，正在隨機洗牌...`;
+                    this.processAllCandidates(combined, centerLoc);
+                } catch (e) {
+                    this.errorMessage = "掃描過程發生錯誤。";
+                    this.isLoading = false;
+                }
+            },
+
+            singlePointSearch(location, radius) {
+                return new Promise((resolve) => {
+                    const req = { location, radius, keyword: '美食 飯 麵 小吃' };
+                    this.service.nearbySearch(req, (results, status) => {
+                        if (status === 'OK') resolve(results);
+                        else resolve([]);
+                    });
                 });
             },
 
             processAllCandidates(results, userLoc) {
-                let candidates = results.filter(p => !this.excludeTags.some(tag => p.name.includes(tag)));
-                if (this.onlyOpen) {
-                    const openCandidates = candidates.filter(p => p.opening_hours && p.opening_hours.open_now);
-                    if (openCandidates.length > 0) candidates = openCandidates;
+                // 大洗牌 (Fisher-Yates Shuffle)
+                for (let i = results.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [results[i], results[j]] = [results[j], results[i]];
                 }
+
+                // 排除關鍵字
+                let candidates = results.filter(p => !this.excludeTags.some(tag => p.name.includes(tag)));
                 this.totalCandidates = candidates.length;
+                
                 if (candidates.length === 0) {
-                    this.errorMessage = "沒有符合條件的餐廳。";
+                    this.errorMessage = "符合條件的店家為 0，請放寬排除條件。";
                     this.isLoading = false;
                     return;
                 }
+
                 this.tryFindValidPlace(candidates, userLoc);
             },
 
             tryFindValidPlace(candidates, userLoc) {
                 if (candidates.length === 0) {
-                    this.errorMessage = "找不到營業中的餐廳。";
+                    this.errorMessage = "目前這幾百間店似乎都休息中。";
                     this.isLoading = false;
                     return;
                 }
-                const randomIndex = Math.floor(Math.random() * candidates.length);
-                const candidate = candidates.splice(randomIndex, 1)[0];
-                
+
+                const candidate = candidates.shift(); // 從大洗牌後的名單拿第一個
+                this.loadingStatus = `正在分析最佳選項：${candidate.name}`;
+
                 const request = {
                     placeId: candidate.place_id,
                     fields: ['name', 'rating', 'formatted_address', 'vicinity', 'photos', 'opening_hours', 'geometry', 'user_ratings_total', 'place_id']
@@ -350,72 +301,110 @@
 
                 this.service.getDetails(request, (place, status) => {
                     if (status === 'OK') {
-                        if (this.onlyOpen) {
-                            const isOpen = place.opening_hours && typeof place.opening_hours.isOpen === 'function' && place.opening_hours.isOpen();
-                            if (!isOpen) {
-                                this.tryFindValidPlace(candidates, userLoc);
-                                return;
-                            }
+                        const isOpen = place.opening_hours && typeof place.opening_hours.isOpen === 'function' && place.opening_hours.isOpen();
+                        
+                        if (this.onlyOpen && !isOpen) {
+                            this.tryFindValidPlace(candidates, userLoc);
+                            return;
                         }
+
                         this.currentResult = place;
                         this.processOpeningHours(place);
                         this.compareTravelOptions(userLoc, place.geometry.location);
+                        
+                        this.$nextTick(() => {
+                            const el = document.getElementById('result-section');
+                            if(el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        });
                         this.isLoading = false;
+                        this.loadingStatus = '';
                     } else {
                         this.tryFindValidPlace(candidates, userLoc);
                     }
                 });
             },
 
+            // 格式與交通邏輯保持一致
             processOpeningHours(place) {
                 this.displayTimeText = '時間未知';
                 this.isOpenNow = false;
                 const jsDay = new Date().getDay();
                 const daysMap = ['週日', '週一', '週二', '週三', '週四', '週五', '週六'];
+                const currentDayName = daysMap[jsDay];
+
                 if (place.opening_hours) {
                     this.isOpenNow = place.opening_hours.isOpen();
-                    if (place.opening_hours.weekday_text) {
+                    if (place.opening_hours.weekday_text && place.opening_hours.weekday_text.length > 0) {
                         const googleIndex = (jsDay === 0) ? 6 : jsDay - 1;
-                        let raw = place.opening_hours.weekday_text[googleIndex];
-                        if (raw) {
-                            const colon = raw.indexOf(':');
-                            this.displayTimeText = daysMap[jsDay] + ' ' + (colon > -1 ? raw.substring(colon + 1).trim() : raw);
+                        let todayStrRaw = place.opening_hours.weekday_text[googleIndex];
+                        if (todayStrRaw) {
+                            const colonIndex = todayStrRaw.indexOf(':');
+                            if (colonIndex > -1) {
+                                let timePart = todayStrRaw.substring(colonIndex + 1).trim();
+                                timePart = timePart.replace('–', '~').replace('-', '~');
+                                if (timePart === '休息' || timePart === 'Closed') {
+                                    this.displayTimeText = `${currentDayName} 休息中`;
+                                } else { this.displayTimeText = `${currentDayName} ${timePart}`; }
+                            } else { this.displayTimeText = todayStrRaw; }
                         }
+                    } 
+                    if (!this.displayTimeText.includes('~')) {
+                         this.displayTimeText = this.isOpenNow ? `${currentDayName} 營業中` : `${currentDayName} 休息中`;
                     }
-                }
-                if (this.displayTimeText.includes('時間未知')) this.displayTimeText = daysMap[jsDay] + (this.isOpenNow ? ' 營業中' : ' 休息中');
+                } else { this.displayTimeText = `${currentDayName} 休息中`; }
             },
 
             compareTravelOptions(origin, dest) {
                 this.isCalculatingTime = true;
-                const getRoute = (mode) => {
+                this.travelInfo = null;
+                const walkReq = { origin, destination: dest, travelMode: 'WALKING' };
+                const transitReq = { origin, destination: dest, travelMode: 'TRANSIT', transitOptions: { modes: ['BUS', 'SUBWAY'] } };
+
+                const getRoute = (req) => {
                     return new Promise((resolve) => {
-                        this.directionsService.route({ origin, destination: dest, travelMode: mode }, (res, status) => {
+                        this.directionsService.route(req, (res, status) => {
                             if (status === 'OK') resolve(res.routes[0].legs[0]);
                             else resolve(null);
                         });
                     });
                 };
 
-                Promise.all([getRoute('WALKING'), getRoute('TRANSIT')]).then(([walkRes, transitRes]) => {
+                Promise.all([getRoute(walkReq), getRoute(transitReq)]).then(([walkRes, transitRes]) => {
                     this.isCalculatingTime = false;
-                    if (!walkRes) return;
+                    if (!walkRes) { this.finalTravelMode = 'WALKING'; return; }
                     const walkMin = Math.ceil(walkRes.duration.value / 60);
-                    if (walkMin <= 20 || !transitRes) {
-                        this.travelInfo = walkRes;
-                        this.finalTravelMode = 'WALKING';
-                        this.comparisonNote = "走路最方便";
+
+                    if (walkMin <= 20) {
+                        this.setWalkingResult(walkRes);
+                        this.comparisonNote = "距離適中，走路最方便";
+                        return;
+                    }
+                    if (transitRes) {
+                        const transitMin = Math.ceil(transitRes.duration.value / 60);
+                        if ((walkMin - transitMin > 10) || (transitMin < walkMin * 0.6)) {
+                            this.setTransitResult(transitRes, transitRes.steps);
+                            this.comparisonNote = `比走路快約 ${walkMin - transitMin} 分鐘`;
+                        } else {
+                            this.setWalkingResult(walkRes);
+                            this.comparisonNote = "搭車沒快多少，走路較單純";
+                        }
                     } else {
-                        this.travelInfo = transitRes;
-                        this.finalTravelMode = 'TRANSIT';
-                        const transitStep = transitRes.steps.find(s => s.travel_mode === 'TRANSIT');
-                        this.transitLine = transitStep?.transit?.line?.short_name || '大眾運輸';
-                        this.comparisonNote = `比走路快 ${walkMin - Math.ceil(transitRes.duration.value/60)} 分鐘`;
+                        this.setWalkingResult(walkRes);
+                        this.comparisonNote = "附近無便捷大眾運輸";
                     }
                 });
             },
-
-            reset() { this.currentResult = null; this.errorMessage = ''; }
+            setWalkingResult(res) { this.finalTravelMode = 'WALKING'; this.travelInfo = res; this.transitLine = ''; },
+            setTransitResult(res, steps) {
+                this.finalTravelMode = 'TRANSIT';
+                this.travelInfo = res;
+                const transitStep = steps.find(step => step.travel_mode === 'TRANSIT');
+                if (transitStep && transitStep.transit) {
+                    const line = transitStep.transit.line;
+                    this.transitLine = line.short_name ? (line.short_name + (line.vehicle.type === 'BUS' ? '號公車' : '')) : line.name;
+                } else { this.transitLine = '大眾運輸'; }
+            },
+            reset() { this.currentResult = null; this.travelInfo = null; }
         }
     }).mount('#app');
 </script>
