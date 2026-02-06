@@ -7,170 +7,211 @@
     <!-- 引入外部資源 -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- 引入 Serif (襯線體) 和 Sans (無襯線體) -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&family=Noto+Serif+TC:wght@600;900&display=swap" rel="stylesheet">
     
     <style>
         [v-cloak] { display: none; }
-        body { font-family: 'Noto Sans TC', sans-serif; background-color: #0f172a; color: #e2e8f0; margin: 0; }
+        
+        /* 全域字體設定：標題用宋體，內文用黑體 */
+        body { 
+            font-family: 'Noto Sans TC', sans-serif; 
+            background-color: #f9fafb; /* 淺灰白背景 */
+            color: #374151; /* 深灰文字 */
+            margin: 0; 
+        }
+        h1, h2, h3, .serif-font {
+            font-family: 'Noto Serif TC', serif;
+        }
+
         .gmnoprint, .gm-style-cc { display: none; }
+        
+        /* 載入動畫 (改為深色) */
         .loader {
-            border: 3px solid #334155;
-            border-top: 3px solid #2dd4bf;
+            border: 3px solid #e5e7eb;
+            border-top: 3px solid #4b5563;
             border-radius: 50%;
             width: 24px;
             height: 24px;
-            animation: spin 1s linear infinite;
+            animation: spin 0.8s linear infinite;
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: #0f172a; }
-        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+        /* 營業中開關樣式 (淺色版) */
+        .toggle-checkbox:checked { right: 0; border-color: #4b5563; }
+        .toggle-checkbox:checked + .toggle-label { background-color: #4b5563; }
     </style>
 </head>
 <body>
 
-<div id="app" v-cloak class="max-w-md mx-auto min-h-screen bg-slate-900 shadow-2xl flex flex-col border-x border-slate-800">
+<!-- 
+    Layout 修改：
+    1. 移除 max-w-md，改為 max-w-5xl (更寬)
+    2. 加入 md:flex md:gap-8 (電腦版左右排)
+-->
+<div id="app" v-cloak class="max-w-5xl mx-auto min-h-screen flex flex-col md:justify-center md:py-10 p-0 md:px-6">
     
-    <header class="bg-slate-800/80 backdrop-blur-md p-5 border-b border-slate-700 sticky top-0 z-30">
-        <h1 class="text-xl font-bold text-teal-400 tracking-wider">今天吃什麼？</h1>
-    </header>
-
-    <div class="flex-1 p-5 overflow-y-auto pb-20">
+    <div class="flex-1 w-full bg-white shadow-sm border border-gray-200 md:rounded-lg overflow-hidden flex flex-col md:flex-row">
         
-        <!-- 錯誤提示區塊 -->
-        <div v-if="errorMessage" class="mb-4 bg-red-900/40 border border-red-800 text-red-200 p-3 rounded-xl text-xs space-y-2">
-            <div class="flex gap-2 items-start font-bold">
-                <span>⚠️</span>
-                <span>{{ errorMessage }}</span>
-            </div>
-            <div v-if="debugInfo" class="pl-6 text-red-300 font-mono opacity-80 border-t border-red-800/50 pt-1 mt-1">
-                代碼: {{ debugInfo }}
-            </div>
-        </div>
-
-        <!-- 1. 搜尋設定區 -->
-        <div class="bg-slate-800/50 p-5 rounded-2xl border border-slate-700/50 space-y-5 mb-6">
+        <!-- 左側：操作面板 (電腦版佔 40%) -->
+        <div class="w-full md:w-5/12 bg-gray-50 border-b md:border-b-0 md:border-r border-gray-200 flex flex-col z-20">
             
-            <div>
-                <label class="flex items-center gap-2 text-teal-200 text-xs font-bold uppercase mb-2 tracking-widest">
-                    <span>📍</span> 搜尋區域 (台灣限定)
-                </label>
-                <input v-model="searchLocation" type="text" class="w-full p-3 bg-slate-900 border border-slate-700 rounded-xl text-white outline-none focus:ring-2 focus:ring-teal-500 transition-all placeholder-slate-600 text-sm" placeholder="例如：板橋車站">
-            </div>
+            <header class="p-6 pb-4 border-b border-gray-200 bg-white">
+                <h1 class="text-3xl font-black text-gray-800 tracking-wide">今天吃什麼？</h1>
+                <p class="text-sm text-gray-500 mt-1 font-light tracking-widest">LUNCH SELECTOR</p>
+            </header>
 
-            <div>
-                <label class="flex items-center gap-2 text-teal-200 text-xs font-bold uppercase mb-2 tracking-widest">
-                    <span>🚫</span> 排除條件
-                </label>
-                <div class="flex flex-wrap gap-2 mb-2">
-                    <span v-for="(tag, index) in excludeTags" :key="index" @click="removeTag(index)" class="bg-slate-700 text-slate-300 px-2.5 py-1 rounded-lg text-xs border border-slate-600 hover:bg-red-900/30 transition cursor-pointer flex items-center gap-1">
-                        {{ tag }} <span class="text-slate-500">×</span>
-                    </span>
-                </div>
-                <div class="flex gap-2">
-                    <input v-model="newExcludeTag" @keyup.enter="addTag" type="text" placeholder="新增排除 (例: 咖哩)" class="flex-1 p-2.5 bg-slate-900 border border-slate-700 rounded-xl text-sm outline-none focus:border-teal-500 transition-colors">
-                    <button @click="addTag" class="bg-slate-700 hover:bg-slate-600 text-white px-3 rounded-xl font-bold transition-colors text-lg">+</button>
-                </div>
-            </div>
-
-            <button @click="findLunch" :disabled="isLoading || !isMapsReady" class="w-full bg-teal-600 hover:bg-teal-500 active:scale-95 text-white py-3.5 rounded-xl font-bold text-lg shadow-lg disabled:opacity-50 disabled:scale-100 transition-all flex justify-center items-center gap-2">
-                <div v-if="isLoading" class="loader border-white border-t-transparent w-5 h-5 border-2"></div>
-                <span v-else>🎲 開始隨機抽選</span>
-            </button>
-            
-            <div v-if="isLoading" class="text-center text-xs text-teal-400 font-bold animate-pulse mt-2">
-                正在地毯式搜索美食中，會花一點時間...
-            </div>
-        </div>
-
-        <!-- 2. 結果顯示區 -->
-        <div v-if="currentResult" id="result-section" class="animate-slide-up space-y-4 pb-10">
-            
-            <div class="flex items-center gap-2 text-slate-400 text-xs font-bold uppercase tracking-wider px-2">
-                <span>👇 抽選結果 (從 {{ totalCandidates }} 間店家中選出)</span>
-                <span class="flex-1 h-px bg-slate-700"></span>
-            </div>
-
-            <div class="bg-slate-800 rounded-3xl shadow-2xl border border-slate-700 overflow-hidden relative">
+            <div class="p-6 flex-1 overflow-y-auto">
                 
-                <div class="h-64 bg-slate-700 relative group">
-                    <img 
-                        v-if="currentResult.photos && currentResult.photos.length > 0"
-                        :src="currentResult.photos[0].getUrl({maxWidth: 600})" 
-                        class="w-full h-full object-cover opacity-90 transition-opacity"
-                        alt="餐廳照片"
-                    >
-                    <div v-else class="w-full h-full flex flex-col items-center justify-center text-slate-500 gap-2">
-                        <span class="text-3xl">🍽️</span>
-                        <span class="text-xs">暫無照片</span>
+                <!-- 錯誤提示 -->
+                <div v-if="errorMessage" class="mb-6 bg-red-50 border-l-4 border-red-500 text-red-700 p-4 text-sm">
+                    <div class="font-bold flex items-center gap-2">
+                        <span>⚠️</span> 錯誤訊息
                     </div>
-                    
-                    <div class="absolute top-4 right-4 bg-black/70 backdrop-blur-md px-3 py-1.5 rounded-xl text-sm font-bold text-yellow-400 border border-white/10 shadow-lg flex items-center gap-1.5">
-                        <span>⭐</span> {{ currentResult.rating || 'N/A' }}
+                    <p class="mt-1">{{ errorMessage }}</p>
+                    <div v-if="debugInfo" class="mt-2 text-xs font-mono text-red-400 opacity-75">
+                        Code: {{ debugInfo }}
                     </div>
                 </div>
 
-                <div class="p-6">
-                    <h2 class="text-2xl font-bold text-white leading-tight mb-2">{{ currentResult.name }}</h2>
-                    
-                    <div class="flex flex-wrap gap-2 mb-4 items-center">
-                        <div :class="isOpenNow ? 'bg-teal-900/60 text-teal-300 border-teal-700/50' : 'bg-red-900/60 text-red-300 border-red-700/50'" 
-                             class="border text-sm px-3 py-1.5 rounded-lg font-bold flex items-center gap-2 shadow-sm">
-                            <span v-if="isOpenNow" class="w-2 h-2 rounded-full bg-teal-400 animate-pulse"></span>
-                            {{ displayTimeText }}
-                        </div>
-                        <span v-if="currentResult.user_ratings_total" class="bg-blue-900/50 text-blue-300 border border-blue-800 text-xs px-3 py-1.5 rounded-lg font-medium">
-                            {{ currentResult.user_ratings_total }} 則評論
-                        </span>
+                <div class="space-y-8">
+                    <!-- 地點輸入 -->
+                    <div>
+                        <label class="block text-gray-500 text-xs font-bold uppercase mb-2 tracking-widest">
+                            📍 搜尋區域
+                        </label>
+                        <input v-model="searchLocation" type="text" class="w-full p-4 bg-white border border-gray-300 rounded-lg text-gray-800 outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent transition-all shadow-sm" placeholder="例如：板橋車站">
                     </div>
 
-                    <p class="text-slate-400 text-sm mb-6 flex items-start gap-2 leading-relaxed">
-                        <span class="mt-0.5">📍</span> {{ currentResult.vicinity || currentResult.formatted_address }}
-                    </p>
-
-                    <div class="bg-slate-900/80 rounded-2xl p-4 border border-slate-700/50 mb-6 relative overflow-hidden">
-                        
-                        <div class="flex items-center gap-2 mb-3 text-xs text-slate-500 border-b border-slate-700/50 pb-2">
-                            <span class="bg-slate-700 text-slate-300 px-1.5 py-0.5 rounded text-[10px] font-bold">FROM</span>
-                            <span class="truncate max-w-[150px] font-medium text-slate-300">{{ searchLocation }}</span>
-                        </div>
-
-                        <div class="flex justify-between items-center mb-1 relative z-10">
-                            <p class="text-xs font-bold uppercase tracking-wider flex items-center gap-1" 
-                               :class="finalTravelMode === 'TRANSIT' ? 'text-blue-400' : 'text-teal-500'">
-                                <span v-if="finalTravelMode === 'TRANSIT'">🚌 建議搭乘</span>
-                                <span v-else>🚶 建議步行</span>
-                            </p>
-                            <span v-if="finalTravelMode === 'TRANSIT' && transitLine" class="text-xs bg-blue-900/50 text-blue-200 px-2 py-0.5 rounded border border-blue-800/50">
-                                {{ transitLine }}
+                    <!-- 排除條件 -->
+                    <div>
+                        <label class="block text-gray-500 text-xs font-bold uppercase mb-2 tracking-widest">
+                            🚫 排除條件
+                        </label>
+                        <div class="flex flex-wrap gap-2 mb-3">
+                            <span v-for="(tag, index) in excludeTags" :key="index" @click="removeTag(index)" class="bg-white text-gray-600 px-3 py-1.5 rounded-full text-sm border border-gray-300 hover:border-red-300 hover:text-red-500 transition cursor-pointer flex items-center gap-2 shadow-sm">
+                                {{ tag }} <span class="text-xs opacity-50">✕</span>
                             </span>
                         </div>
-                        
-                        <div v-if="isCalculatingTime" class="flex items-center gap-2 text-slate-400 text-sm py-2">
-                            <div class="loader w-4 h-4 border-2"></div> 分析最佳路徑...
+                        <div class="flex gap-2">
+                            <input v-model="newExcludeTag" @keyup.enter="addTag" type="text" placeholder="新增排除 (例: 咖哩)" class="flex-1 p-3 bg-white border border-gray-300 rounded-lg text-sm outline-none focus:border-gray-500 transition-colors shadow-sm">
+                            <button @click="addTag" class="bg-gray-800 hover:bg-gray-700 text-white px-4 rounded-lg font-bold transition-colors">+</button>
                         </div>
-                        
-                        <div v-else-if="travelInfo" class="relative z-10">
-                            <div class="flex items-baseline gap-2">
-                                <span class="text-4xl font-bold" :class="finalTravelMode === 'TRANSIT' ? 'text-blue-400' : 'text-teal-400'">
-                                    {{ travelInfo.duration.text }}
-                                </span>
-                                <span class="text-sm text-slate-500 font-medium">{{ travelInfo.distance.text }}</span>
-                            </div>
-                            <p v-if="comparisonNote" class="text-xs text-slate-500 mt-1 italic">
-                                * {{ comparisonNote }}
-                            </p>
-                        </div>
-                        
-                        <div v-else class="text-sm text-slate-500 italic py-2">距離太近或無法計算</div>
                     </div>
 
-                    <div class="grid grid-cols-2 gap-3">
-                        <a :href="'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(currentResult.name) + '&query_place_id=' + currentResult.place_id" target="_blank" class="bg-teal-600 hover:bg-teal-500 active:scale-95 text-white py-4 rounded-xl text-center font-bold text-sm transition-all shadow-lg shadow-teal-900/20">
-                            開啟地圖導航
+                    <!-- 按鈕區 -->
+                    <div class="pt-4">
+                        <button @click="findLunch" :disabled="isLoading || !isMapsReady" class="w-full bg-gray-900 hover:bg-gray-800 text-white py-4 rounded-lg font-bold text-lg shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all transform active:scale-[0.98] flex justify-center items-center gap-3">
+                            <div v-if="isLoading" class="loader border-white/20 border-t-white"></div>
+                            <span v-else>🎲 開始隨機抽選</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="p-4 text-center text-xs text-gray-400 border-t border-gray-200 bg-white">
+                台灣限定搜尋・資料來源 Google Maps
+            </div>
+        </div>
+
+        <!-- 右側：結果顯示 (電腦版佔 60%) -->
+        <div class="w-full md:w-7/12 bg-white relative min-h-[400px] md:min-h-0">
+            
+            <!-- 預設畫面 (還沒抽的時候) -->
+            <div v-if="!currentResult && !isLoading" class="absolute inset-0 flex flex-col items-center justify-center text-gray-300 p-10 text-center">
+                <span class="text-6xl mb-4 grayscale opacity-20">🍽️</span>
+                <p class="text-lg font-serif text-gray-400">準備好你的午餐了嗎？<br>點擊左側按鈕開始。</p>
+            </div>
+
+            <!-- 載入中畫面 -->
+            <div v-if="isLoading" class="absolute inset-0 flex items-center justify-center bg-white/80 backdrop-blur-sm z-30">
+                <div class="loader w-12 h-12 border-4 border-gray-200 border-t-gray-800"></div>
+            </div>
+
+            <!-- 結果卡片 -->
+            <div v-if="currentResult" id="result-section" class="h-full flex flex-col animate-fade-in overflow-y-auto">
+                
+                <!-- 圖片區 -->
+                <div class="h-64 md:h-80 bg-gray-100 relative group shrink-0">
+                    <img 
+                        v-if="currentResult.photos && currentResult.photos.length > 0"
+                        :src="currentResult.photos[0].getUrl({maxWidth: 800})" 
+                        class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                        alt="餐廳照片"
+                    >
+                    <div v-else class="w-full h-full flex flex-col items-center justify-center text-gray-400 gap-2">
+                        <span class="text-4xl opacity-30">📷</span>
+                        <span class="text-sm">店家未提供照片</span>
+                    </div>
+                    
+                    <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-6 pt-20">
+                        <h2 class="text-3xl md:text-4xl font-bold text-white mb-2 leading-tight serif-font drop-shadow-sm">{{ currentResult.name }}</h2>
+                        <div class="flex items-center gap-3 text-white/90 text-sm font-medium">
+                            <span class="bg-yellow-500 text-white px-2 py-0.5 rounded text-xs font-bold shadow-sm">⭐ {{ currentResult.rating || 'N/A' }}</span>
+                            <span v-if="currentResult.user_ratings_total">({{ currentResult.user_ratings_total }} 則評論)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 詳細資訊 -->
+                <div class="p-6 md:p-10 space-y-8 bg-white flex-1">
+                    
+                    <!-- 營業資訊 -->
+                    <div class="flex items-center gap-3 text-sm border-b border-gray-100 pb-6">
+                        <div :class="isOpenNow ? 'text-green-600 bg-green-50' : 'text-red-500 bg-red-50'" 
+                             class="px-3 py-1 rounded-md font-bold flex items-center gap-2 border border-current/10">
+                            <span v-if="isOpenNow" class="w-2 h-2 rounded-full bg-green-500"></span>
+                            {{ displayTimeText }}
+                        </div>
+                    </div>
+
+                    <!-- 地址 -->
+                    <div class="flex gap-4">
+                        <span class="text-2xl">📍</span>
+                        <div>
+                            <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">LOCATION</p>
+                            <p class="text-gray-800 text-lg leading-relaxed">{{ currentResult.vicinity || currentResult.formatted_address }}</p>
+                        </div>
+                    </div>
+
+                    <!-- 交通資訊 -->
+                    <div class="flex gap-4">
+                        <span class="text-2xl" v-if="finalTravelMode === 'TRANSIT'">🚌</span>
+                        <span class="text-2xl" v-else>🚶</span>
+                        <div class="flex-1">
+                            <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">
+                                FROM {{ searchLocation }}
+                            </p>
+                            
+                            <div v-if="isCalculatingTime" class="text-gray-400 text-sm italic py-2">計算路程中...</div>
+                            
+                            <div v-else-if="travelInfo">
+                                <div class="flex items-baseline gap-3">
+                                    <span class="text-3xl font-bold text-gray-800 font-sans">
+                                        {{ travelInfo.duration.text }}
+                                    </span>
+                                    <span class="text-sm text-gray-500">{{ travelInfo.distance.text }}</span>
+                                </div>
+                                
+                                <div class="mt-2 flex flex-wrap gap-2">
+                                    <span v-if="finalTravelMode === 'TRANSIT' && transitLine" class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded border border-blue-200">
+                                        {{ transitLine }}
+                                    </span>
+                                    <span v-if="comparisonNote" class="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                                        {{ comparisonNote }}
+                                    </span>
+                                </div>
+                            </div>
+                            <div v-else class="text-sm text-gray-400 italic">距離過近或無法計算</div>
+                        </div>
+                    </div>
+
+                    <!-- 導航按鈕 -->
+                    <div class="grid grid-cols-2 gap-4 pt-4 mt-auto">
+                        <a :href="'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(currentResult.name) + '&query_place_id=' + currentResult.place_id" target="_blank" class="bg-white border-2 border-gray-800 text-gray-800 hover:bg-gray-50 active:scale-[0.98] py-3 rounded-lg text-center font-bold text-sm transition-all">
+                            開啟地圖
                         </a>
-                        <button @click="reset" class="border border-slate-600 text-slate-300 hover:bg-slate-800 active:scale-95 py-4 rounded-xl font-bold text-sm transition-all">
+                        <button @click="reset" class="bg-gray-100 text-gray-500 hover:bg-gray-200 active:scale-[0.98] py-3 rounded-lg font-bold text-sm transition-all">
                             清除結果
                         </button>
                     </div>
@@ -196,10 +237,11 @@
                 searchLocation: '板橋車站',
                 newExcludeTag: '',
                 excludeTags: ['速食', '星巴克', '甜點', '麥當勞', '7-ELEVEN'],
-                // 移除了 onlyOpen 預設值
+                onlyOpen: true,
                 
                 currentResult: null,
                 isLoading: false,
+                loadingStatus: '', 
                 isCalculatingTime: false,
                 errorMessage: '',
                 debugInfo: '', 
@@ -238,7 +280,6 @@
                     }
                 };
 
-                // 監聽 Google Maps 的全域錯誤
                 window.gm_authFailure = () => {
                     this.errorMessage = "Google Maps API 身分驗證失敗！可能是「網站限制」擋住了。";
                 };
@@ -268,7 +309,6 @@
                 this.travelInfo = null;
                 this.totalCandidates = 0;
 
-                // 延長安全計時器到 45 秒，因為我們要跑很多頁
                 if (this.safetyTimer) clearTimeout(this.safetyTimer);
                 this.safetyTimer = setTimeout(() => {
                     if (this.isLoading) {
@@ -277,7 +317,6 @@
                     }
                 }, 45000); 
 
-                // 增加 componentRestrictions: { country: 'TW' } 鎖定台灣
                 this.geocoder.geocode({ 
                     address: this.searchLocation,
                     componentRestrictions: { country: 'TW' } 
@@ -293,20 +332,14 @@
                 });
             },
             
-            // 核心修改：隨機偏移 + 縮小半徑 + 強制翻頁
             async radarScan(centerLoc) {
-                // 將半徑縮小到 700 公尺，避免跨到其他捷運站
                 const radius = 700; 
-                
-                // 產生 4 個搜尋點：1個中心 + 3個隨機偏移點
-                // 隨機偏移可以確保每次搜尋結果不同，解決「總是那 36 間」的問題
                 const points = [centerLoc];
                 for(let i=0; i<3; i++) {
-                    points.push(this.getRandomOffset(centerLoc, 300)); // 在 300 公尺內隨機偏移
+                    points.push(this.getRandomOffset(centerLoc, 300));
                 }
 
                 try {
-                    // 並行發送請求
                     const allScanPromises = points.map(point => this.singlePointSearch(point, radius));
                     const outcomes = await Promise.all(allScanPromises);
                     
@@ -336,9 +369,8 @@
                 }
             },
 
-            // 輔助函式：產生隨機經緯度偏移
             getRandomOffset(location, meters) {
-                const r = meters / 111300; // 約略轉換公尺到度數
+                const r = meters / 111300; 
                 const y0 = location.lat();
                 const x0 = location.lng();
                 const u = Math.random();
@@ -347,10 +379,7 @@
                 const t = 2 * Math.PI * v;
                 const x = w * Math.cos(t);
                 const y = w * Math.sin(t);
-                
-                // 修正經度的變形
                 const xAdjusted = x / Math.cos(y0);
-                
                 return new google.maps.LatLng(y + y0, xAdjusted + x0);
             },
 
@@ -359,16 +388,13 @@
                     const req = { location, radius, keyword: '美食' };
                     let allResults = [];
                     
-                    // 使用回呼函數處理分頁，強制抓取最多 3 頁
                     const callback = (results, status, pagination) => {
                         if (status === google.maps.places.PlacesServiceStatus.OK) {
                             allResults = allResults.concat(results);
-                            
-                            // 強制翻頁，直到抓滿 60 筆或沒頁面為止
                             if (pagination && pagination.hasNextPage && allResults.length < 60) {
                                 setTimeout(() => {
                                     pagination.nextPage();
-                                }, 2000); // 必須有 2 秒間隔
+                                }, 2000); 
                             } else {
                                 resolve(allResults);
                             }
@@ -382,7 +408,6 @@
             },
 
             processAllCandidates(results, userLoc) {
-                // Fisher-Yates 大洗牌
                 for (let i = results.length - 1; i > 0; i--) {
                     const j = Math.floor(Math.random() * (i + 1));
                     [results[i], results[j]] = [results[j], results[i]];
@@ -407,10 +432,8 @@
                     return;
                 }
                 
-                // 因為已經隨機洗牌過，直接取第一個即可
                 const candidate = candidates.shift();
                 
-                // 延遲請求避免超速
                 setTimeout(() => {
                     const request = {
                         placeId: candidate.place_id,
@@ -419,14 +442,12 @@
 
                     this.service.getDetails(request, (place, status) => {
                         if (status === 'OK') {
-                            // 這裡不再檢查是否營業中，直接顯示
                             this.currentResult = place;
                             this.processOpeningHours(place);
                             this.compareTravelOptions(userLoc, place.geometry.location);
                             this.isLoading = false;
                             if (this.safetyTimer) clearTimeout(this.safetyTimer);
                         } else {
-                            // 如果這家店詳細資料抓不到，就試下一家
                             this.tryFindValidPlace(candidates, userLoc);
                         }
                     });
