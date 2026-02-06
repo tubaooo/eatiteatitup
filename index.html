@@ -41,10 +41,14 @@
         .toggle-checkbox:checked { right: 0; border-color: #4b5563; }
         .toggle-checkbox:checked + .toggle-label { background-color: #4b5563; }
 
-        /* 文字描邊效果，增強可讀性 */
-        .text-stroke {
-            -webkit-text-stroke: 1px rgba(0, 0, 0, 0.6);
-            text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+        /* 修改重點：移除原本的 .text-stroke，改用多層次柔和陰影 
+           這能讓文字清楚浮現，又不會有生硬的黑框感。
+        */
+        .text-shadow-enhanced {
+            text-shadow: 
+                0 2px 4px rgba(0,0,0,0.7),  /* 第一層：較實的陰影，定義輪廓 */
+                0 4px 8px rgba(0,0,0,0.5),  /* 第二層：中等柔和陰影，增加立體感 */
+                0 0 20px rgba(0,0,0,0.3);   /* 第三層：大範圍暈光，與背景分離 */
         }
     </style>
 </head>
@@ -151,8 +155,12 @@
                     </div>
                     
                     <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-6 pt-20">
-                        <!-- 店名加上描邊效果 -->
-                        <h2 class="text-3xl md:text-4xl font-bold text-white mb-2 leading-tight serif-font drop-shadow-lg text-stroke">{{ currentResult.name }}</h2>
+                        <!-- 
+                            修改重點：
+                            1. 移除 drop-shadow-lg 和 text-stroke class。
+                            2. 加入新的 text-shadow-enhanced class。
+                        -->
+                        <h2 class="text-3xl md:text-4xl font-bold text-white mb-2 leading-tight serif-font text-shadow-enhanced">{{ currentResult.name }}</h2>
                         
                         <!-- 評分標籤：動態背景色 -->
                         <div class="flex items-center gap-3 text-white text-sm font-medium">
